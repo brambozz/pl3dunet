@@ -28,18 +28,21 @@ def show_sample(sample):
             Same size as image, but with a channel per object type.
             Each channel is the segmentation mask for each object type.
     """
-    # TODO: each mask a separate color
+    # Combine masks into single image with color array
+    masks = np.zeros_like(sample["image"])
+    masks_color = np.zeros(sample["image"].shape, dtype=object)
+    color_list = ["red", "blue", "green", "orange", "purple"]
+    for i in range(5):
+        masks = masks | sample["masks"][i]
+        masks_color[sample["masks"][i]] = color_list[i]
+
     # Prepare figure
     fig = plt.figure()
-    ax_list = []
-    for i in range(6):
-        ax_list.append(fig.add_subplot(2, 3, i + 1, projection="3d"))
+    ax_image = fig.add_subplot(1, 2, 1, projection="3d")
+    ax_masks = fig.add_subplot(1, 2, 2, projection="3d")
 
-    # Plot image
-    ax_list[0].voxels(sample["image"])
-
-    # Plot masks
-    for i in range(5):
-        ax_list[i + 1].voxels(sample["masks"][i])
+    # Plot image and masks
+    ax_image.voxels(sample["image"])
+    ax_masks.voxels(masks, facecolors=masks_color)
 
     plt.show()

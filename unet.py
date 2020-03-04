@@ -5,9 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
-# TODO: think about tiling strategy, or does this go into data loader?
-# unet2d using mirroring of the image with the loss of pixels.
-
 
 def create_double_conv(channels):
     """Create a double convolution+BN+ReLU block
@@ -59,6 +56,9 @@ class UNet(pl.LightningModule):
         self.upconv2 = nn.ConvTranspose3d(256, 256, kernel_size=2, stride=2)
         self.upconv3 = nn.ConvTranspose3d(128, 128, kernel_size=2, stride=2)
 
+        # Define final convolution
+        self.outconv = nn.Conv3d(64, self.out_channels, 1)
+
     def forward(self, x):
         # Encoder
         x1 = self.encoder_conv1(x)
@@ -80,7 +80,9 @@ class UNet(pl.LightningModule):
         x = self.upconv3(x)
         # x = torch.cat((x1, x), dim=1)
         x = self.decoder_conv3(x)
-        # TODO: final convolution
+
+        # Final convolution
+        x = self.outconv(x)
 
         return x
 

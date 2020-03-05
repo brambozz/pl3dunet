@@ -41,12 +41,9 @@ class UNet(pl.LightningModule):
         self.encoder_conv4 = create_double_conv([256, 256, 512])
 
         # Define decoder convolution blocks
-        # self.decoder_conv1 = create_double_conv([256 + 512, 256, 256])
-        # self.decoder_conv2 = create_double_conv([128 + 256, 128, 128])
-        # self.decoder_conv3 = create_double_conv([64 + 128, 64, 64])
-        self.decoder_conv1 = create_double_conv([512, 256, 256])
-        self.decoder_conv2 = create_double_conv([256, 128, 128])
-        self.decoder_conv3 = create_double_conv([128, 64, 64])
+        self.decoder_conv1 = create_double_conv([256 + 512, 256, 256])
+        self.decoder_conv2 = create_double_conv([128 + 256, 128, 128])
+        self.decoder_conv3 = create_double_conv([64 + 128, 64, 64])
 
         # Define maxpool
         self.maxpool = nn.MaxPool3d(2)  # Kernel size and stride 2
@@ -58,6 +55,29 @@ class UNet(pl.LightningModule):
 
         # Define final convolution
         self.outconv = nn.Conv3d(64, self.out_channels, 1)
+
+    def center_crop(self, x_encoder, x):
+        """Center crop a tensor
+
+        Parameters
+        ----------
+        x_encoder : tensor
+            The tensor at the end of each encoder convblock that is 
+            cropped.
+        x : tensor
+            The tensor at the start of each decoder convblock that is
+            concatenated with the cropped x_encoder.
+
+        Returns
+        -------
+        out : tensor
+            Cropped x_encoder
+        """
+        crop1 = (x_encoder.shape[2] - x.shape[2]) // 2  # First dimension
+        crop2 = (x_encoder.shape[3] - x.shape[3]) // 2  # Second dimension
+        crop3 = (x_encoder.shape[4] - x.shape[4]) // 2  # Third dimension
+
+        return F.pad(x_encoder, (-crop3, -crop3, -crop2, -crop2, -crop1, -crop1))
 
     def forward(self, x):
         # Encoder
@@ -71,14 +91,13 @@ class UNet(pl.LightningModule):
 
         # Decoder
         x = self.upconv1(x)
-        # x = torch.cat((x3, x), dim=1)
-        # TODO: center crop with correct dimensions
+        x = torch.cat((self.center_crop(x3, x), x), dim=1)
         x = self.decoder_conv1(x)
         x = self.upconv2(x)
-        # x = torch.cat((x2, x), dim=1)
+        x = torch.cat((self.center_crop(x2, x), x), dim=1)
         x = self.decoder_conv2(x)
         x = self.upconv3(x)
-        # x = torch.cat((x1, x), dim=1)
+        x = torch.cat((self.center_crop(x1, x), x), dim=1)
         x = self.decoder_conv3(x)
 
         # Final convolution

@@ -56,6 +56,9 @@ class UNet(pl.LightningModule):
         # Define final convolution
         self.outconv = nn.Conv3d(64, self.out_channels, 1)
 
+        # Define loss criterion
+        self.criterion = nn.BCEWithLogitsLoss()
+
     def center_crop(self, x_encoder, x):
         """Center crop a tensor
 
@@ -106,9 +109,13 @@ class UNet(pl.LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self.forward(x)
-        return {"loss": F.cross_entropy(y_hat, y)}
+        input = batch["input"]
+        masks = batch["masks"]
+
+        output = self.forward(input)
+        loss = self.criterion(output, masks)
+
+        return {"loss": loss}
 
     def configure_optimizers(self):
         return torch.optim.SGD(self.parameters(), lr=0.02, momentum=0.99)
